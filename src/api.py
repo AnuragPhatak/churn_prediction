@@ -1,59 +1,38 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-import pickle
+import mlflow.pyfunc
 import pandas as pd
-import os
+from mlflow.tracking import MlflowClient
+mlflow.set_tracking_uri("file:///C:/Anurag/loylty_rewardz/churn_prediction/src/mlruns")
 
-# ---------------------------
-# Paths
-# ---------------------------
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(BASE_DIR, "models", "registered", "model.pkl")
-DATA_PATH = os.path.join(BASE_DIR, "data", "processed", "customer_data_new_features.csv")
+app = FastAPI(title="Churn Prediction API")
 
-# ---------------------------
-# Load Model
-# ---------------------------
-with open(MODEL_PATH, "rb") as f:
-    model = pickle.load(f)
+# MLflow Model Registry details
+MODEL_NAME = "churn_prediction_model"
 
-# ---------------------------
-# Load feature names dynamically from CSV
-# ---------------------------
-df = pd.read_csv(DATA_PATH)
-id_cols = [col for col in df.columns if "customer_id" in col.lower()]
-feature_names = [col for col in df.columns if col not in id_cols + ["churn"]]
+# ✅ Fetch the latest version of the model
+client = MlflowClient()
+latest_versions = client.get_latest_versions(MODEL_NAME)
+latest_version = latest_versions[0].version  # get latest version number
 
-# ---------------------------
-# FastAPI app
-# ---------------------------
-app = FastAPI(
-    title="Churn Prediction API",
-    description="API to predict customer churn using trained XGBoost model",
-    version="1.0"
-)
+# Load model from latest version
+model = mlflow.pyfunc.load_model(f"models:/{MODEL_NAME}/{latest_version}")
 
-class CustomerData(BaseModel):
-    features: dict
 
-@app.get("/")
-def home():
-    return {"message": "Welcome to the Churn Prediction API 🚀"}
+# Define input schema with Pydantic
+class ChurnFeatures(BaseModel):
+    recency: float
+    frequency: float
+    engagement_duration: float
+    inactivity_streak: float
+    engagement_per_interaction: float
+
 
 @app.post("/predict")
-def predict(data: CustomerData):
-    # Convert request → DataFrame
-    input_df = pd.DataFrame([data.features])
-
-    # Align columns with training features
-    input_df = input_df.reindex(columns=feature_names, fill_value=0)
-
-    # Predict
-    prediction = model.predict(input_df)[0]
-    probability = model.predict_proba(input_df)[0, 1]
-
-    return {
-        "churn_prediction": int(prediction),
-        "churn_probability": round(float(probability), 4),
-        "used_features": feature_names
-    }
+def predict(features: ChurnFeatures):
+    """
+    Predict churn likelihood for given customer features.
+    """
+    df = pd.DataFrame([features.dict()])
+    prediction = model.predict(df)
+    return {"prediction": int(prediction[0])}
