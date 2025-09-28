@@ -3,25 +3,20 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.env
-*.egg
-*.egg-info/
-dist/
-build/
+*.db
 
 # Virtual environment
 venv/
 
-# DVC tracked data (optional: raw data may be tracked remotely)
-data/processed/
-data/external/
-
-# MLflow artifacts (optional if you store them elsewhere)
+# DVC + MLflow
+.mlruns/
 mlruns/
+.dvc/
 
-# Jupyter notebooks checkpoints
-.ipynb_checkpoints/
+# Data
+data/raw/*
+data/processed/*
 
-# System files
+# OS
 .DS_Store
 Thumbs.db
