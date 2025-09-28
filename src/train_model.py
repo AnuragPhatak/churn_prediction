@@ -1,104 +1,65 @@
-import mlflow
-from mlflow.tracking import MlflowClient
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
+import mlflow
+import mlflow.sklearn
 from xgboost import XGBClassifier
+from mlflow.tracking import MlflowClient
 
-# MLflow setup
-mlflow.set_tracking_uri("file:///C:/Anurag/loylty_rewardz/churn_prediction/src/mlruns")
-EXPERIMENT_NAME = "churn_prediction_demo"
-MODEL_NAME = "churn_prediction_model"
+# -----------------------------
+# 1. Load full dataset
+# -----------------------------
+df = pd.read_csv("../data/processed/customer_data_new_features.csv")  
+X = df.drop("churn", axis=1)
+y = df["churn"]
 
-# Ensure all runs log under this experiment
-mlflow.set_experiment(EXPERIMENT_NAME)
+# -----------------------------
+# 2. Best hyperparameters (from MLflow experiment results)
+# -----------------------------
+best_params = {
+    "n_estimators": 50,
+    "max_depth": 5,
+    "learning_rate": 0.1706869478158034,
+    "use_label_encoder": False,
+    "eval_metric": "logloss",
+    "random_state": 42
+}
 
+# -----------------------------
+# 3. Train final model on all data
+# -----------------------------
+final_model = XGBClassifier(**best_params)
+final_model.fit(X, y)
 
-def load_data(path):
-    """Load dataset and split features/target."""
-    df = pd.read_csv(path)
+# -----------------------------
+# 4. Log to MLflow Experiment + Register model
+# -----------------------------
+mlflow.set_experiment("churn_final_1")   # ✅ ensures runs don’t go to Default
 
-    # Drop churn + customer_id if exists
-    drop_cols = [col for col in ["churn", "customer_id"] if col in df.columns]
-    X = df.drop(columns=drop_cols)
-    y = df["churn"]
+model_name = "ChurnPredictionModel"
 
-    return X, y
-
-
-def get_best_run(experiment_name):
-    """Fetch the best run (highest accuracy) from MLflow experiment."""
-    client = MlflowClient()
-    experiment = client.get_experiment_by_name(experiment_name)
-
-    if experiment is None:
-        raise ValueError(f"Experiment '{experiment_name}' not found in MLflow.")
-
-    runs = client.search_runs(
-        experiment_ids=[experiment.experiment_id],
-        order_by=["metrics.accuracy DESC"],
-        max_results=1
+with mlflow.start_run(run_name="XGBoost_final_full_data"):
+    # log hyperparameters for traceability
+    mlflow.log_params(best_params)
+    
+    # log and register model
+    mlflow.sklearn.log_model(
+        sk_model=final_model,
+        artifact_path="model",
+        registered_model_name=model_name
     )
 
-    if not runs:
-        raise ValueError(f"No runs found in experiment '{experiment_name}'")
+print("✅ Final model retrained on full data and logged to registry")
 
-    best_run = runs[0]
-    print(f"Best run ID: {best_run.info.run_id}, Accuracy: {best_run.data.metrics['accuracy']:.4f}")
-    return best_run
+# -----------------------------
+# 5. Promote to Production
+# -----------------------------
+client = MlflowClient()
+latest_version = client.get_latest_versions(model_name, stages=["None"])[0].version
 
+client.transition_model_version_stage(
+    name=model_name,
+    version=latest_version,
+    stage="Production",
+    archive_existing_versions=True
+)
 
-def retrain_and_register(X, y, best_run):
-    """Retrain best model on full dataset and register in Model Registry."""
-    params = best_run.data.params
-    algo = best_run.data.tags.get("mlflow.runName", "Unknown")
-
-    if algo.startswith("RandomForest"):
-        model = RandomForestClassifier(
-            n_estimators=int(float(params["n_estimators"])),
-            max_depth=int(float(params["max_depth"])),
-            min_samples_split=int(float(params["min_samples_split"])),
-            random_state=42,
-            n_jobs=-1
-        )
-    elif algo.startswith("XGBoost"):
-        model = XGBClassifier(
-            n_estimators=int(float(params["n_estimators"])),
-            max_depth=int(float(params["max_depth"])),
-            learning_rate=float(params["learning_rate"]),
-            subsample=float(params["subsample"]),
-            colsample_bytree=float(params["colsample_bytree"]),
-            eval_metric="logloss",
-            use_label_encoder=False,
-            random_state=42,
-            n_jobs=-1
-        )
-    else:
-        raise ValueError(f"Unknown algorithm name found in best run: {algo}")
-
-    # Retrain on full dataset
-    print(f"🔄 Retraining {algo} with best hyperparameters on full dataset...")
-    model.fit(X, y)
-
-    # Log & register model
-    client = MlflowClient()
-    experiment = client.get_experiment_by_name(EXPERIMENT_NAME)
-
-    with mlflow.start_run(
-        experiment_id=experiment.experiment_id,
-        run_name=f"{algo}_final"
-    ):
-        mlflow.log_params(params)
-        mlflow.log_metric("accuracy", best_run.data.metrics["accuracy"])
-        mlflow.sklearn.log_model(model, artifact_path="model")
-
-        # Register in Model Registry
-        model_uri = f"runs:/{mlflow.active_run().info.run_id}/model"
-        registered_model = mlflow.register_model(model_uri, MODEL_NAME)
-
-    print(f"✅ Registered {algo} model as '{MODEL_NAME}' in Model Registry")
-
-
-if __name__ == "__main__":
-    X, y = load_data("../data/processed/customer_data_new_features.csv")
-    best_run = get_best_run(EXPERIMENT_NAME)
-    retrain_and_register(X, y, best_run)
+print(f"🚀 Model {model_name} v{latest_version} promoted to Production")

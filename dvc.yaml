@@ -1,0 +1,29 @@
+stages:
+  preprocess:
+    cmd: python src/preprocessing.py \
+         --input data/raw/customer_churn_data.csv \
+         --output data/processed/cleaned_customer_churn_data.csv
+    deps:
+      - src/preprocessing.py
+      - data/raw/customer_churn_data.csv
+    outs:
+      - data/processed/cleaned_customer_churn_data.csv
+
+  feature_engineering:
+    cmd: python src/feature_engineering.py \
+         --input data/processed/cleaned_customer_churn_data.csv \
+         --output data/processed/customer_data_new_features.csv
+    deps:
+      - src/feature_engineering.py
+      - data/processed/cleaned_customer_churn_data.csv
+    outs:
+      - data/processed/customer_data_new_features.csv
+
+  train:
+    cmd: python src/train_model.py
+    deps:
+      - src/train_model.py
+      - data/processed/customer_data_new_features.csv
+      - params.yaml
+    outs:
+      - models

@@ -1,0 +1,30 @@
+data:
+  raw_path: data/raw/customers.csv
+  processed_path: data/processed/cleaned_customer_churn_data.csv
+  features_path: data/processed/customer_data_new_features.csv
+
+features:
+  target_col: churn
+  input_features:
+    - recency
+    - frequency
+    - engagement_duration
+    - inactivity_streak
+    - engagement_per_interaction
+
+training:
+  model_type: RandomForest   # or "XGBoost"
+  test_size: 0.2
+  random_state: 42
+
+  rf:   # RandomForest hyperparameters
+    n_estimators: 200
+    max_depth: 10
+    min_samples_split: 5
+
+  xgb:  # XGBoost hyperparameters
+    n_estimators: 300
+    max_depth: 6
+    learning_rate: 0.1
+    subsample: 0.8
+    colsample_bytree: 0.8
