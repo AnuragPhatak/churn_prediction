@@ -62,3 +62,14 @@ client.transition_model_version_stage(
 )
 
 print(f"🚀 Model {model_name} v{latest_version} promoted to Production")
+
+
+
+import mlflow.sklearn
+
+mlflow.sklearn.save_model(
+    sk_model=final_model,
+    path="models/churn_model"
+)
+
+print("📦 Local model copy saved at models/churn_model/")

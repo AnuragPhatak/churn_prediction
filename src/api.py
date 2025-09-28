@@ -4,8 +4,9 @@ import mlflow.pyfunc
 
 MODEL_NAME = "ChurnPredictionModel"
 MODEL_STAGE = "Production"  
-model = mlflow.pyfunc.load_model(model_uri=f"models:/{MODEL_NAME}/{MODEL_STAGE}")
+# model = mlflow.pyfunc.load_model(model_uri=f"models:/{MODEL_NAME}/{MODEL_STAGE}")
 
+model = mlflow.pyfunc.load_model("models/churn_model")
 
 app = FastAPI(title="Churn Prediction API", version="1.0")
 
