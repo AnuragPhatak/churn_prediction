@@ -1,33 +1,40 @@
 import streamlit as st
 import requests
 
+API_URL = "http://127.0.0.1:8000/predict"  
+
+st.set_page_config(page_title="Churn Prediction App", layout="centered")
 st.title("📊 Customer Churn Prediction")
 
-st.write("Provide customer details to check churn likelihood:")
 
-# Input fields (only the 5 features)
-recency = st.number_input("Recency (days since last activity)", min_value=0.0, value=3.0)
-frequency = st.number_input("Frequency (number of interactions)", min_value=0.0, value=5.0)
-engagement_duration = st.number_input("Engagement Duration (minutes)", min_value=0.0, value=120.0)
-inactivity_streak = st.number_input("Inactivity Streak (days)", min_value=0.0, value=2.0)
-engagement_per_interaction = st.number_input("Engagement per Interaction", min_value=0.0, value=24.0)
+with st.form("churn_form"):
+    recency = st.number_input("Recency", value=0, step=1)
+    frequency = st.number_input("Frequency", value=0, step=1)
+    engagement_duration = st.number_input("Engagement Duration", value=0, step=1)
+    inactivity_streak = st.number_input("Inactivity Streak", value=0, step=1)
+    engagement_per_interaction = st.number_input("Engagement per Interaction", value=0, step=1)
 
-# Prepare payload
-payload = {
-    "recency": recency,
-    "frequency": frequency,
-    "engagement_duration": engagement_duration,
-    "inactivity_streak": inactivity_streak,
-    "engagement_per_interaction": engagement_per_interaction
-}
+    submitted = st.form_submit_button("Predict Churn")
 
-if st.button("Predict"):
-    response = requests.post("http://127.0.0.1:8000/predict", json=payload)
-    if response.status_code == 200:
-        prediction = response.json()["prediction"]
-        if prediction == 1:
-            st.error("⚠️ Customer is likely to CHURN")
+
+
+if submitted:
+    payload = {
+        "recency": recency,
+        "frequency": frequency,
+        "engagement_duration": engagement_duration,
+        "inactivity_streak": inactivity_streak,
+        "engagement_per_interaction": engagement_per_interaction,
+    }
+    try:
+        response = requests.post(API_URL, json=payload)
+        if response.status_code == 200:
+            prediction = response.json()["churn_prediction"]
+            if prediction == 1:
+                st.error("⚠️ This customer is likely to churn!")
+            else:
+                st.success("✅ This customer is not likely to churn.")
         else:
-            st.success("✅ Customer is NOT likely to churn")
-    else:
-        st.error("API request failed")
+            st.error(f"API error: {response.status_code}")
+    except Exception as e:
+        st.error(f"Could not connect to API: {e}")

@@ -1,56 +1,55 @@
 import pandas as pd
 import mlflow
 import mlflow.sklearn
+import yaml
 from xgboost import XGBClassifier
 from mlflow.tracking import MlflowClient
 
 # -----------------------------
-# 1. Load full dataset
+# 1. Load config
 # -----------------------------
-df = pd.read_csv("../data/processed/customer_data_new_features.csv")  
-X = df.drop("churn", axis=1)
-y = df["churn"]
+with open("params.yaml", "r") as f:
+    config = yaml.safe_load(f)
 
 # -----------------------------
-# 2. Best hyperparameters (from MLflow experiment results)
+# 2. Load dataset
 # -----------------------------
-best_params = {
-    "n_estimators": 50,
-    "max_depth": 5,
-    "learning_rate": 0.1706869478158034,
-    "use_label_encoder": False,
-    "eval_metric": "logloss",
-    "random_state": 42
-}
+df = pd.read_csv(config["data"]["features_path"])
+X = df[config["features"]["input_features"]]
+y = df[config["features"]["target_col"]]
 
 # -----------------------------
-# 3. Train final model on all data
+# 3. Best hyperparameters (from YAML)
+# -----------------------------
+best_params = config["training"]["xgb"]
+best_params["random_state"] = config["training"]["random_state"]
+
+# -----------------------------
+# 4. Train final model on all data
 # -----------------------------
 final_model = XGBClassifier(**best_params)
 final_model.fit(X, y)
 
 # -----------------------------
-# 4. Log to MLflow Experiment + Register model
+# 5. Log to MLflow Experiment + Register model
 # -----------------------------
-mlflow.set_experiment("churn_final_1")   # ✅ ensures runs don’t go to Default
+mlflow.set_experiment("churn_final")
 
-model_name = "ChurnPredictionModel"
+model_name = config["registry"]["model_name"]
 
 with mlflow.start_run(run_name="XGBoost_final_full_data"):
-    # log hyperparameters for traceability
-    mlflow.log_params(best_params)
+    mlflow.log_params(best_params)  # log hyperparameters
     
-    # log and register model
     mlflow.sklearn.log_model(
         sk_model=final_model,
         artifact_path="model",
         registered_model_name=model_name
     )
 
-print("✅ Final model retrained on full data and logged to registry")
+print("✅ Final model retrained on full data and logged to MLflow Registry")
 
 # -----------------------------
-# 5. Promote to Production
+# 6. Promote to Production
 # -----------------------------
 client = MlflowClient()
 latest_version = client.get_latest_versions(model_name, stages=["None"])[0].version

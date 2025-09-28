@@ -13,14 +13,8 @@ features:
     - engagement_per_interaction
 
 training:
-  model_type: RandomForest   # or "XGBoost"
-  test_size: 0.2
+  model_type: XGBoost
   random_state: 42
-
-  rf:   # RandomForest hyperparameters
-    n_estimators: 200
-    max_depth: 10
-    min_samples_split: 5
 
   xgb:  # XGBoost hyperparameters
     n_estimators: 300
@@ -28,3 +22,8 @@ training:
     learning_rate: 0.1
     subsample: 0.8
     colsample_bytree: 0.8
+    use_label_encoder: False
+    eval_metric: logloss
+
+registry:
+  model_name: ChurnPredictionModel

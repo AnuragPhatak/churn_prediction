@@ -99,7 +99,18 @@ def feature_engineering_pipeline(input_csv, output_csv, target_col="churn", k=5)
     return df
 
 
+import argparse
+
 if __name__ == "__main__":
-    input_csv = "../data/processed/cleaned_customer_churn_data.csv"
-    output_csv = "../data/processed/customer_data_new_features.csv"
-    df_final = feature_engineering_pipeline(input_csv, output_csv, target_col="churn", k=5)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", required=True, help="Path to input CSV")
+    parser.add_argument("--output", required=True, help="Path to save features CSV")
+    args = parser.parse_args()
+
+    input_csv = args.input
+    output_csv = args.output
+
+    df_final = feature_engineering_pipeline(
+        input_csv, output_csv, target_col="churn", k=5
+    )
+

@@ -1,0 +1,52 @@
+schema: '2.0'
+stages:
+  preprocess:
+    cmd: python src/preprocessing.py --input data/raw/customer_churn_data.csv 
+      --output data/processed/cleaned_customer_churn_data.csv
+    deps:
+    - path: data/raw/customer_churn_data.csv
+      hash: md5
+      md5: 1fc31ebd1888e6a9fbc98ea1b3307ff4
+      size: 3244007
+    - path: src/preprocessing.py
+      hash: md5
+      md5: a70fc02658aa709d65be01be2b474db9
+      size: 2523
+    outs:
+    - path: data/processed/cleaned_customer_churn_data.csv
+      hash: md5
+      md5: ab635f19d212c67cf2b6686ff9963b88
+      size: 4134513
+  feature_engineering:
+    cmd: python src/feature_engineering.py --input 
+      data/processed/cleaned_customer_churn_data.csv --output 
+      data/processed/customer_data_new_features.csv
+    deps:
+    - path: data/processed/cleaned_customer_churn_data.csv
+      hash: md5
+      md5: ab635f19d212c67cf2b6686ff9963b88
+      size: 4134513
+    - path: src/feature_engineering.py
+      hash: md5
+      md5: 62d6a29f5fb8d42a99938826bba3d0a7
+      size: 3777
+    outs:
+    - path: data/processed/customer_data_new_features.csv
+      hash: md5
+      md5: 34c0fb5eb0a5ac7ad659bce21bd97a22
+      size: 5123311
+  train:
+    cmd: python src/train_model.py
+    deps:
+    - path: data/processed/customer_data_new_features.csv
+      hash: md5
+      md5: 34c0fb5eb0a5ac7ad659bce21bd97a22
+      size: 5123311
+    - path: params.yaml
+      hash: md5
+      md5: cfcce2ca7e70e398c77a1bdc3e3ba84e
+      size: 654
+    - path: src/train_model.py
+      hash: md5
+      md5: 8c2da79712320742328371b4c71b365f
+      size: 1910
